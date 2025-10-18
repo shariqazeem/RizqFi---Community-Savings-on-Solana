@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint};
 
-declare_id!("sv1jTY2Rs2H7fXVVj3a6WoP6GD3X2j5tHwYkdfZQ9oP");
+declare_id!("ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN");
 
 #[program]
 pub mod rizqfi_contracts {
@@ -150,7 +150,6 @@ pub mod rizqfi_contracts {
         token::transfer(cpi_ctx, total_payout)?;
         
         recipient_member.has_received_payout = true;
-        recipient_member.has_deposited_current_round = false;
         committee.members_who_received_payout.push(recipient_member.authority);
         committee.current_round += 1;
         
@@ -162,13 +161,17 @@ pub mod rizqfi_contracts {
         
         committee.next_round_date = Clock::get()?.unix_timestamp + frequency_seconds;
         committee.deposits_this_round = 0;
-        
+
+        // Reset recipient's deposit status immediately
+        recipient_member.has_deposited_current_round = false;
+
         if committee.members_who_received_payout.len() as u8 == committee.current_members {
             committee.is_active = false;
             committee.phase = CommitteePhase::Completed;
             msg!("Committee completed! All members received payouts.");
         } else {
             committee.phase = CommitteePhase::Deposit;
+            msg!("Moving to next round. All members need to deposit again.");
         }
         
         msg!("Payout distributed: {} USDC to {}", total_payout, recipient_member.authority);
@@ -190,6 +193,31 @@ pub mod rizqfi_contracts {
         Ok(())
     }
 
+    // Reset all member deposits for new round (called once per round)
+    pub fn reset_round(ctx: Context<ResetRound>) -> Result<()> {
+        let committee = &mut ctx.accounts.committee;
+        
+        require!(committee.phase == CommitteePhase::Deposit, ErrorCode::NotInDepositPhase);
+        require!(committee.deposits_this_round == 0, ErrorCode::RoundAlreadyStarted);
+        
+        // This is just a marker instruction
+        // The actual reset happens via multiple member_reset calls
+        msg!("Round {} reset initiated", committee.current_round);
+        Ok(())
+    }
+
+    // Reset individual member
+    pub fn reset_member_for_round(ctx: Context<ResetMemberForRound>) -> Result<()> {
+        let committee = &ctx.accounts.committee;
+        let member = &mut ctx.accounts.member;
+        
+        require!(committee.phase == CommitteePhase::Deposit, ErrorCode::NotInDepositPhase);
+        
+        member.has_deposited_current_round = false;
+        
+        msg!("Member {} reset for round {}", member.authority, committee.current_round);
+        Ok(())
+    }
     // Handle missed payment
     pub fn record_missed_payment(ctx: Context<RecordMissedPayment>) -> Result<()> {
         let member = &mut ctx.accounts.member;
@@ -201,6 +229,20 @@ pub mod rizqfi_contracts {
             msg!("Member {} marked inactive due to missed payments", member.authority);
         }
         
+        Ok(())
+    }
+
+    // Reset all members' deposit status for new round (called by authority after payout)
+    pub fn reset_all_deposits_for_new_round(ctx: Context<ResetAllDeposits>) -> Result<()> {
+        let committee = &ctx.accounts.committee;
+        
+        require!(committee.phase == CommitteePhase::Deposit, ErrorCode::NotInDepositPhase);
+        
+        // This will be called multiple times, once for each member
+        let member = &mut ctx.accounts.member;
+        member.has_deposited_current_round = false;
+        
+        msg!("Reset deposit status for member: {}", member.authority);
         Ok(())
     }
 
@@ -238,6 +280,7 @@ pub mod rizqfi_contracts {
         Ok(())
     }
 }
+
 
 // Account structures
 #[derive(Accounts)]
@@ -416,6 +459,38 @@ pub struct Committee {
     pub members_who_received_payout: Vec<Pubkey>,
 }
 
+#[derive(Accounts)]
+pub struct ResetAllDeposits<'info> {
+    pub committee: Account<'info, Committee>,
+    
+    #[account(
+        mut,
+        constraint = member.committee == committee.key()
+    )]
+    pub member: Account<'info, Member>,
+}
+
+#[derive(Accounts)]
+pub struct ResetRound<'info> {
+    #[account(
+        mut,
+        has_one = authority
+    )]
+    pub committee: Account<'info, Committee>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ResetMemberForRound<'info> {
+    pub committee: Account<'info, Committee>,
+    
+    #[account(
+        mut,
+        constraint = member.committee == committee.key()
+    )]
+    pub member: Account<'info, Member>,
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct Member {
@@ -490,4 +565,6 @@ pub enum ErrorCode {
     NotAllDepositsReceived,
     #[msg("Committee not completed yet")]
     CommitteeNotCompleted,
+    #[msg("Round has already started with deposits")]  // ADD THIS LINE
+    RoundAlreadyStarted,                                 // ADD THIS LINE
 }

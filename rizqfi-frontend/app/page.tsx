@@ -8,9 +8,10 @@ import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import idl from './idl.json';
 
-const PROGRAM_ID = new PublicKey('sv1jTY2Rs2H7fXVVj3a6WoP6GD3X2j5tHwYkdfZQ9oP');
+const PROGRAM_ID = new PublicKey('ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN');
 const USDC_MINT_DEVNET = new PublicKey('CLPBhpt4QCijF5B5FQAaAY8ALDcKXTRcp3UiSyNLTEHZ');
 
+// Phase labels
 const PHASE_LABELS: Record<string, { label: string; color: string }> = {
   joining: { label: 'Joining', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   deposit: { label: 'Deposit Round', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
@@ -68,8 +69,9 @@ export default function Home() {
       const allCommittees: any[] = [];
       const checkedCommittees = new Set<string>();
 
-      console.log('🔍 Starting committee fetch');
+      console.log('🔍 Starting committee fetch for:', publicKey!.toString().slice(0, 8));
 
+      // 1. Fetch committee created by this user
       const [userCommitteePDA] = PublicKey.findProgramAddressSync(
         [Buffer.from('committee'), publicKey!.toBuffer()],
         PROGRAM_ID
@@ -77,20 +79,39 @@ export default function Home() {
 
       try {
         const committeeAccount = await program.account.committee.fetch(userCommitteePDA);
+
+        // Check if creator is also a member
+        const [creatorMemberPDA] = PublicKey.findProgramAddressSync(
+          [Buffer.from('member'), userCommitteePDA.toBuffer(), publicKey!.toBuffer()],
+          PROGRAM_ID
+        );
+
+        let memberAccount = null;
+        try {
+          memberAccount = await program.account.member.fetch(creatorMemberPDA);
+        } catch (e) {
+          console.log('ℹ️ Creator has not joined as member yet');
+        }
+
         allCommittees.push({
           ...committeeAccount,
           publicKey: userCommitteePDA,
-          role: 'creator'
+          role: 'creator',
+          memberAccount: memberAccount, // Include member data if creator joined
+          memberPDA: creatorMemberPDA
         });
         checkedCommittees.add(userCommitteePDA.toString());
+        console.log('✅ Found created committee:', committeeAccount.name);
       } catch (e) {
         console.log('ℹ️ No committee created by this user');
       }
 
+      // 2. Check for stored committee addresses
       try {
         const storedCommittees = localStorage.getItem(`user_${publicKey!.toString()}_committees`);
         if (storedCommittees) {
           const committeeAddresses = JSON.parse(storedCommittees) as string[];
+          console.log(`📦 Found ${committeeAddresses.length} stored committee addresses`);
 
           for (const committeeAddress of committeeAddresses) {
             if (checkedCommittees.has(committeeAddress)) continue;
@@ -114,8 +135,9 @@ export default function Home() {
                 memberPDA: memberPDA
               });
               checkedCommittees.add(committeeAddress);
+              console.log('✅ Found joined committee:', committeeAccount.name);
             } catch (e) {
-              console.log('⚠️ Stored committee no longer valid');
+              console.log('⚠️ Stored committee no longer valid:', committeeAddress.slice(0, 8));
             }
           }
         }
@@ -123,6 +145,7 @@ export default function Home() {
         console.log('ℹ️ No stored committees found');
       }
 
+      console.log(`📋 Total committees: ${allCommittees.length}`);
       setCommittees(allCommittees);
     } catch (error: any) {
       console.error('❌ Error in fetchCommittees:', error);
@@ -152,16 +175,31 @@ export default function Home() {
     }
   };
 
-  // ✅ SIMPLIFIED: No manual resets needed!
+  // Replace these functions in your app/page.tsx
+
   const handleContribute = async (committee: any) => {
     try {
       setContributing(true);
       const program = getProgram();
       if (!program || !publicKey) return;
 
-      // ✅ Check based on round number now
-      if (committee.memberAccount?.lastDepositRound === committee.currentRound) {
-        alert('✅ You have already contributed for this round!');
+      // Refresh committee data first to get latest memberAccount
+      const [memberPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from('member'), committee.publicKey.toBuffer(), publicKey.toBuffer()],
+        PROGRAM_ID
+      );
+
+      let currentMemberAccount;
+      try {
+        currentMemberAccount = await program.account.member.fetch(memberPDA);
+      } catch (e) {
+        alert('❌ You are not a member of this committee!');
+        return;
+      }
+
+      // Check if member has already deposited this round
+      if (currentMemberAccount.hasDepositedCurrentRound) {
+        alert('✅ You have already contributed for this round!\n\nWait for other members to deposit.');
         return;
       }
 
@@ -176,34 +214,64 @@ export default function Home() {
         PROGRAM_ID
       );
 
-      const [memberPDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from('member'), committee.publicKey.toBuffer(), publicKey.toBuffer()],
-        PROGRAM_ID
-      );
-
       const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 
-      const tx = await program.methods
-        .contribute()
-        .accounts({
-          committee: committee.publicKey,
-          member: memberPDA,
-          memberTokenAccount: memberTokenAccount,
-          committeeVault: vaultPDA,
-          authority: publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc();
+      console.log('🚀 Sending contribution...');
 
-      console.log('✅ Contribution successful:', tx);
-      alert(`✅ Successfully contributed ${(committee.monthlyContribution / 1_000_000).toFixed(2)} USDC!`);
+      try {
+        const tx = await Promise.race([
+          program.methods
+            .contribute()
+            .accounts({
+              committee: committee.publicKey,
+              member: memberPDA,
+              memberTokenAccount: memberTokenAccount,
+              committeeVault: vaultPDA,
+              authority: publicKey,
+              tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .rpc({ skipPreflight: true }),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+          )
+        ]);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('✅ Contribution sent:', tx);
+      } catch (txError: any) {
+        if (txError.message === 'TIMEOUT') {
+          console.log('⏳ Transaction is processing...');
+        } else if (txError.message && txError.message.includes('already been processed')) {
+          console.log('⚠️ Transaction already processed');
+        } else {
+          throw txError;
+        }
+      }
+
+      alert(`🚀 Contributing ${(committee.monthlyContribution / 1_000_000).toFixed(2)} USDC...\n\nVerifying...`);
+
+      // Background verification
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        try {
+          const memberAccount = await program.account.member.fetch(memberPDA);
+          if (memberAccount.hasDepositedCurrentRound) {
+            console.log('✅ Contribution verified!');
+            alert(`✅ Successfully contributed ${(committee.monthlyContribution / 1_000_000).toFixed(2)} USDC!`);
+            await fetchCommittees();
+            return;
+          }
+        } catch (e) {
+          console.log(`⏳ Verification attempt ${i + 1}/10...`);
+        }
+      }
+
+      alert('⚠️ Taking longer than expected.\n\nRefresh to verify your contribution.');
       await fetchCommittees();
 
     } catch (error: any) {
       console.error('❌ Error contributing:', error);
-      
+
       let errorMsg = 'Failed to contribute';
       if (error.message) {
         if (error.message.includes('insufficient')) {
@@ -212,18 +280,22 @@ export default function Home() {
           errorMsg = 'You already contributed this round';
         } else if (error.message.includes('User rejected')) {
           errorMsg = 'Transaction cancelled';
+        } else if (error.message.includes('already been processed')) {
+          alert('🔄 Transaction already processed. Verifying...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          await fetchCommittees();
+          return;
         } else {
           errorMsg = error.message;
         }
       }
-      
+
       alert(`❌ ${errorMsg}`);
     } finally {
       setContributing(false);
     }
   };
 
-  // ✅ SIMPLIFIED: Just distribute, rounds auto-increment!
   const handleDistributePayout = async (committee: any) => {
     try {
       const program = getProgram();
@@ -245,12 +317,16 @@ export default function Home() {
         },
       ]);
 
+      console.log(`Found ${allMembers.length} members`);
+
       const eligibleMember = allMembers.find(m => !m.account.hasReceivedPayout);
-      
+
       if (!eligibleMember) {
         alert('❌ No eligible members for payout!');
         return;
       }
+
+      console.log('💰 Distributing to:', eligibleMember.account.authority.toString().slice(0, 8));
 
       const { getAssociatedTokenAddress } = await import('@solana/spl-token');
       const recipientTokenAccount = await getAssociatedTokenAddress(
@@ -265,27 +341,65 @@ export default function Home() {
 
       const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 
-      // ✅ ONE TRANSACTION - Everything handled automatically!
-      const tx = await program.methods
-        .distributePayout()
-        .accounts({
-          committee: committee.publicKey,
-          recipientMember: eligibleMember.publicKey,
-          committeeVault: vaultPDA,
-          recipientTokenAccount: recipientTokenAccount,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc();
+      console.log('🚀 Sending payout transaction...');
 
-      console.log('✅ Payout distributed!', tx);
-      alert(`✅ Successfully distributed ${(committee.monthlyContribution * committee.maxMembers / 1_000_000).toFixed(2)} USDC!\n\n🎉 Round ${committee.currentRound + 1} started automatically!`);
+      try {
+        const tx = await Promise.race([
+          program.methods
+            .distributePayout()
+            .accounts({
+              committee: committee.publicKey,
+              recipientMember: eligibleMember.publicKey,
+              committeeVault: vaultPDA,
+              recipientTokenAccount: recipientTokenAccount,
+              tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .rpc({ skipPreflight: true }),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+          )
+        ]);
 
+        console.log('✅ Payout transaction sent:', tx);
+      } catch (txError: any) {
+        if (txError.message === 'TIMEOUT') {
+          console.log('⏳ Transaction is processing...');
+        } else if (txError.message && txError.message.includes('already been processed')) {
+          console.log('⚠️ Transaction already processed');
+        } else {
+          throw txError;
+        }
+      }
+
+      alert(`💰 Distributing ${(committee.monthlyContribution * committee.maxMembers / 1_000_000).toFixed(2)} USDC...\n\nVerifying...`);
+
+      // Wait for payout to be confirmed
       await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Reset all member deposit statuses for the new round
+      console.log('🔄 Resetting member deposits...');
+      await resetAllMemberDeposits(committee);
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Verify payout was successful
+      try {
+        const updatedMember = await program.account.member.fetch(eligibleMember.publicKey);
+        if (updatedMember.hasReceivedPayout) {
+          console.log('✅ Payout verified!');
+          alert(`✅ Successfully distributed ${(committee.monthlyContribution * committee.maxMembers / 1_000_000).toFixed(2)} USDC to ${eligibleMember.account.authority.toString().slice(0, 6)}...!`);
+        } else {
+          alert('⏳ Payout is processing. Refresh in 30 seconds to verify.');
+        }
+      } catch (e) {
+        alert('⏳ Payout is processing. Refresh in 30 seconds to verify.');
+      }
+
       await fetchCommittees();
 
     } catch (error: any) {
       console.error('❌ Error distributing payout:', error);
-      
+
       let errorMsg = 'Failed to distribute payout';
       if (error.message) {
         if (error.message.includes('insufficient')) {
@@ -294,12 +408,63 @@ export default function Home() {
           errorMsg = 'Transaction cancelled';
         } else if (error.message.includes('already received')) {
           errorMsg = 'This member already received payout';
+        } else if (error.message.includes('already been processed')) {
+          alert('🔄 Transaction already processed. Verifying...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          await fetchCommittees();
+          return;
         } else {
           errorMsg = error.message;
         }
       }
-      
+
       alert(`❌ ${errorMsg}`);
+    }
+  };
+
+
+  const resetAllMemberDeposits = async (committee: any) => {
+    try {
+      const program = getProgram();
+      if (!program || !publicKey) return;
+
+      console.log('🔄 Resetting all member deposit statuses...');
+
+      // Get all members
+      const allMembers = await program.account.member.all([
+        {
+          memcmp: {
+            offset: 8,
+            bytes: committee.publicKey.toBase58(),
+          },
+        },
+      ]);
+
+      console.log(`Found ${allMembers.length} members to reset`);
+
+      // Reset each member's deposit status
+      for (const memberAccount of allMembers) {
+        try {
+          const tx = await program.methods
+            .resetMemberForRound()
+            .accounts({
+              committee: committee.publicKey,
+              member: memberAccount.publicKey,
+            })
+            .rpc({ skipPreflight: true });
+
+          console.log('✅ Reset deposit for:', memberAccount.account.authority.toString().slice(0, 8), 'tx:', tx);
+
+          // Small delay between transactions
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (e: any) {
+          console.log('⚠️ Failed to reset member:', memberAccount.account.authority.toString().slice(0, 8), e.message);
+        }
+      }
+
+      console.log('✅ All member deposits reset!');
+    } catch (error) {
+      console.error('❌ Error resetting deposits:', error);
     }
   };
 
@@ -334,12 +499,13 @@ export default function Home() {
         PROGRAM_ID
       );
 
+      // Check if already a member
       try {
         await program.account.member.fetch(memberPDA);
         alert("ℹ️ You're already a member of this committee!");
         await fetchCommittees();
         setShowJoinModal(false);
-        return false;
+        return true; // CHANGE: return true instead of false
       } catch (e) {
         // Not a member yet, continue
       }
@@ -384,9 +550,30 @@ export default function Home() {
         txBuilder.preInstructions([createATAIx]);
       }
 
-      const tx = await txBuilder.rpc();
-      console.log('✅ Joined committee!', tx);
+      // CHANGE: Send with timeout and better error handling
+      console.log('🚀 Sending join transaction...');
 
+      try {
+        const tx = await Promise.race([
+          txBuilder.rpc({ skipPreflight: true }),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+          )
+        ]);
+
+        console.log('✅ Transaction sent:', tx);
+
+      } catch (txError: any) {
+        if (txError.message === 'TIMEOUT') {
+          console.log('⏳ Transaction is processing...');
+        } else if (txError.message && txError.message.includes('already been processed')) {
+          console.log('⚠️ Transaction already processed');
+        } else {
+          throw txError; // Re-throw other errors
+        }
+      }
+
+      // Store committee address
       try {
         const storageKey = `user_${publicKey!.toString()}_committees`;
         const stored = localStorage.getItem(storageKey);
@@ -399,17 +586,34 @@ export default function Home() {
         console.log('⚠️ Could not store committee address');
       }
 
-      alert('✅ Successfully joined the committee!');
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetchCommittees();
+      // CHANGE: Always show success and verify in background
+      alert('🚀 Joining committee...\n\nVerifying membership...');
       setShowJoinModal(false);
 
+      // Background verification
+      console.log('🔄 Verifying membership in background...');
+      for (let i = 0; i < 15; i++) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        try {
+          await program.account.member.fetch(memberPDA);
+          console.log('✅ Membership verified!');
+          alert('✅ Successfully joined the committee!');
+          await fetchCommittees();
+          return true;
+        } catch (e) {
+          console.log(`⏳ Verification attempt ${i + 1}/15...`);
+        }
+      }
+
+      // If still not verified after 30 seconds
+      alert('⚠️ Taking longer than expected.\n\nRefresh the page in 1 minute to see if you joined.');
+      await fetchCommittees();
       return true;
 
     } catch (error: any) {
       console.error('❌ Error joining committee:', error);
-      
+
       let errorMsg = 'Failed to join committee';
       if (error.message) {
         if (error.message.includes('Invalid public key')) {
@@ -422,13 +626,74 @@ export default function Home() {
           errorMsg = 'Transaction cancelled';
         } else if (error.message.includes('full')) {
           errorMsg = 'Committee is full';
+        } else if (error.message.includes('already been processed')) {
+          // Transaction succeeded, verify membership
+          alert('🔄 Transaction already processed. Checking membership...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+
+          try {
+            const [memberPDA] = PublicKey.findProgramAddressSync(
+              [Buffer.from('member'), new PublicKey(inviteCode).toBuffer(), publicKey!.toBuffer()],
+              PROGRAM_ID
+            );
+            await program?.account.member.fetch(memberPDA);
+            alert('✅ Successfully joined the committee!');
+            await fetchCommittees();
+            setShowJoinModal(false);
+            return true;
+          } catch {
+            alert('⚠️ Please refresh the page to verify membership.');
+          }
+          return false;
         } else {
           errorMsg = error.message;
         }
       }
-      
+
       alert(`❌ ${errorMsg}`);
       return false;
+    }
+  };
+
+  const refreshCommitteeData = async (committee: any) => {
+    const program = getProgram();
+    if (!program || !publicKey) return committee;
+
+    try {
+      console.log('🔄 Refreshing committee data...');
+
+      const freshCommitteeData = await program.account.committee.fetch(committee.publicKey);
+
+      const [memberPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from('member'), committee.publicKey.toBuffer(), publicKey.toBuffer()],
+        PROGRAM_ID
+      );
+
+      let freshMemberData = null;
+      try {
+        freshMemberData = await program.account.member.fetch(memberPDA);
+      } catch (e) {
+        console.log('ℹ️ Not a member or member data not found');
+      }
+
+      const refreshed = {
+        ...freshCommitteeData,
+        publicKey: committee.publicKey,
+        role: committee.role,
+        memberAccount: freshMemberData,
+        memberPDA: memberPDA
+      };
+
+      console.log('✅ Fresh data:', {
+        round: refreshed.currentRound,
+        deposits: refreshed.depositsThisRound,
+        memberDeposited: freshMemberData?.hasDepositedCurrentRound
+      });
+
+      return refreshed;
+    } catch (error) {
+      console.error('❌ Error refreshing:', error);
+      return committee;
     }
   };
 
@@ -543,12 +808,16 @@ export default function Home() {
                   const frequencyLabel = getFrequencyLabel(committee.frequency);
                   const monthlyAmount = committee.monthlyContribution / 1_000_000;
                   const totalPool = monthlyAmount * committee.maxMembers;
+                  const progress = (committee.currentMembers / committee.maxMembers) * 100;
                   const isCreator = committee.role === 'creator';
 
                   return (
                     <div
                       key={idx}
-                      onClick={() => setSelectedCommittee(committee)}
+                      onClick={async () => {
+                        const refreshed = await refreshCommitteeData(committee);
+                        setSelectedCommittee(refreshed);
+                      }}
                       className="group bg-gradient-to-br from-white/5 to-white/10 rounded-2xl p-6 border border-white/10 hover:border-emerald-500/50 transition-all cursor-pointer hover:scale-[1.02]"
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -599,12 +868,75 @@ export default function Home() {
                 })}
               </div>
             )}
-      </div>
-    </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <CreateCommitteeModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={fetchCommittees}
+          program={getProgram()}
+          userPublicKey={publicKey}
+        />
+      )}
+
+      {showJoinModal && (
+        <JoinCommitteeModal
+          onClose={() => setShowJoinModal(false)}
+          onJoin={handleJoinCommittee}
+        />
+      )}
+
+      {selectedCommittee && (
+        <CommitteeDetailsModal
+          committee={selectedCommittee}
+          onClose={() => setSelectedCommittee(null)}
+          onContribute={async () => {
+            await handleContribute(selectedCommittee);
+            // Refresh committee data after contribution
+            const refreshed = await refreshCommitteeData(selectedCommittee);
+            setSelectedCommittee(refreshed);
+          }}
+          onDistributePayout={async () => {
+            await handleDistributePayout(selectedCommittee);
+            // Refresh committee data after payout
+            const refreshed = await refreshCommitteeData(selectedCommittee);
+            setSelectedCommittee(refreshed);
+          }}
+          onViewMembers={() => {
+            fetchMembers(selectedCommittee.publicKey);
+            setShowMembersModal(true);
+          }}
+          onShare={() => setShowShareModal(true)}
+          contributing={contributing}
+          onRefresh={async () => {
+            const refreshed = await refreshCommitteeData(selectedCommittee);
+            setSelectedCommittee(refreshed);
+          }}
+        />
+      )}
+
+      {showMembersModal && selectedCommittee && (
+        <MembersModal
+          committee={selectedCommittee}
+          members={members}
+          onClose={() => setShowMembersModal(false)}
+        />
+      )}
+
+      {showShareModal && selectedCommittee && (
+        <ShareInviteModal
+          committee={selectedCommittee}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+    </main>
   );
 }
 
 function CreateCommitteeModal({ onClose, onSuccess, program, userPublicKey }: any) {
+  const { connection } = useConnection();
   const [formData, setFormData] = useState({
     name: '',
     contribution: '',
@@ -616,13 +948,93 @@ function CreateCommitteeModal({ onClose, onSuccess, program, userPublicKey }: an
   });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const checkCommitteeExists = async () => {
+    try {
+      const [committeePDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from('committee'), userPublicKey!.toBuffer()],
+        PROGRAM_ID
+      );
 
+      const committeeAccount = await program?.account.committee.fetch(committeePDA);
+      if (committeeAccount) {
+        setError('You already have a committee created. Use a different wallet or close your existing one.');
+        return true;
+      }
+    } catch (e) {
+      // Committee doesn't exist, which is good
+      return false;
+    }
+    return false;
+  };
+  const autoJoinCreator = async (committeeKey: PublicKey) => {
+    try {
+      console.log('🔄 Auto-joining creator...');
+
+      const [memberPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from('member'), committeeKey.toBuffer(), userPublicKey.toBuffer()],
+        PROGRAM_ID
+      );
+
+      try {
+        await program.account.member.fetch(memberPDA);
+        return;
+      } catch (e) { }
+
+      const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, getAccount } = await import('@solana/spl-token');
+
+      const memberTokenAccount = await getAssociatedTokenAddress(
+        USDC_MINT_DEVNET,
+        userPublicKey
+      );
+
+      let needsTokenAccount = false;
+      try {
+        await getAccount(connection, memberTokenAccount);
+      } catch (e) {
+        needsTokenAccount = true;
+      }
+
+      const txBuilder = program.methods
+        .joinCommittee()
+        .accounts({
+          committee: committeeKey,
+          member: memberPDA,
+          memberTokenAccount: memberTokenAccount,
+          authority: userPublicKey,
+          systemProgram: web3.SystemProgram.programId,
+        });
+
+      if (needsTokenAccount) {
+        const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+        const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+
+        const createATAIx = createAssociatedTokenAccountInstruction(
+          userPublicKey,
+          memberTokenAccount,
+          userPublicKey,
+          USDC_MINT_DEVNET,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        txBuilder.preInstructions([createATAIx]);
+      }
+
+      await txBuilder.rpc({ skipPreflight: true });
+      console.log('✅ Creator auto-joined!');
+    } catch (error) {
+      console.error('⚠️ Error auto-joining:', error);
+    }
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!program || !userPublicKey) {
       setError('Please connect your wallet');
       return;
     }
+
+    const exists = await checkCommitteeExists();
+    if (exists) return;
 
     try {
       setCreating(true);
@@ -652,7 +1064,10 @@ function CreateCommitteeModal({ onClose, onSuccess, program, userPublicKey }: an
 
       const startDateTimestamp = new BN(Math.floor(new Date(formData.startDate).getTime() / 1000));
 
-      const tx = await program.methods
+      console.log('🚀 Sending transaction...');
+
+      // Send transaction without waiting for full confirmation
+      const txPromise = program.methods
         .createCommittee(
           formData.name,
           new BN(parseFloat(formData.contribution) * 1_000_000),
@@ -671,20 +1086,67 @@ function CreateCommitteeModal({ onClose, onSuccess, program, userPublicKey }: an
           systemProgram: web3.SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
-        .rpc();
+        .rpc({ skipPreflight: true });
 
-      console.log('Committee created! Transaction:', tx);
+      // Race between transaction and timeout
+      const signature = await Promise.race([
+        txPromise,
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+        )
+      ]).catch((err) => {
+        if (err.message === 'TIMEOUT') {
+          console.log('⏳ Transaction sent but confirmation is slow...');
+          return 'PENDING';
+        }
+        throw err;
+      });
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (signature === 'PENDING' || signature) {
+        console.log('📤 Transaction submitted, verifying in background...');
 
-      setTimeout(() => {
-        onSuccess();
+        // Close modal immediately with pending message
+        alert('🚀 Committee creation in progress!\n\nThis may take 30-60 seconds.\n\nThe page will refresh automatically when ready.');
         onClose();
-      }, 500);
+
+        // Background verification
+        const verifyCommittee = async () => {
+          for (let i = 0; i < 20; i++) {
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Check every 3 seconds
+
+            try {
+              const committeeAccount = await program.account.committee.fetch(committeePDA);
+              console.log('✅ Committee verified on-chain!');
+
+              // Auto-join creator
+              await autoJoinCreator(committeePDA);
+              await new Promise(resolve => setTimeout(resolve, 2000));
+
+              alert('✅ Committee created successfully!\n\nYou have been added as the first member.');
+              onSuccess();
+              return;
+            } catch (e) {
+              console.log(`⏳ Verification attempt ${i + 1}/20...`);
+            }
+          }
+
+          // After 60 seconds of trying
+          alert('⚠️ Committee creation is taking longer than expected.\n\nPlease refresh the page in 1-2 minutes to see if it was created.');
+        };
+
+        verifyCommittee();
+      }
 
     } catch (err: any) {
-      console.error('Error:', err);
-      setError(err.message || 'Failed to create committee');
+      console.error('❌ Error:', err);
+
+      if (err.message && err.message.includes('already in use')) {
+        setError('You already have a committee created.');
+      } else if (err.message && err.message.includes('User rejected')) {
+        setError('Transaction cancelled');
+      } else {
+        setError(err.message || 'Transaction failed');
+      }
     } finally {
       setCreating(false);
     }
@@ -912,6 +1374,292 @@ function JoinCommitteeModal({ onClose, onJoin }: { onClose: () => void; onJoin: 
   );
 }
 
+function CommitteeDetailsModal({
+  committee,
+  onClose,
+  onContribute,
+  onDistributePayout,
+  onViewMembers,
+  onShare,
+  contributing,
+  onRefresh // ADD THIS
+
+}: any) {
+  const monthlyAmount = committee.monthlyContribution / 1_000_000;
+  const totalPool = monthlyAmount * committee.maxMembers;
+  const isCreator = committee.role === 'creator';
+  const memberData = committee.memberAccount;
+  const phaseInfo = PHASE_LABELS[Object.keys(committee.phase || {})[0] || 'joining'];
+  const frequencyLabel = Object.keys(committee.frequency || {})[0] || 'monthly';
+
+  // Check if user can contribute (works for both creator and members)
+  const canContribute =
+    memberData && // User must be a member
+    committee.phase &&
+    Object.keys(committee.phase)[0] === 'deposit' &&
+    !memberData.hasDepositedCurrentRound;
+
+  const canDistributePayout =
+    isCreator &&
+    committee.phase &&
+    Object.keys(committee.phase)[0] === 'payout';
+
+  const isCompleted =
+    committee.phase &&
+    Object.keys(committee.phase)[0] === 'completed';
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-slate-900 rounded-3xl p-8 max-w-2xl w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-2">{committee.name}</h2>
+            <div className="flex items-center space-x-2">
+              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${phaseInfo.color}`}>
+                {phaseInfo.label}
+              </span>
+              <span className={`text-xs font-bold px-2 py-1 rounded-full border ${isCreator ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+                {isCreator ? 'CREATOR' : 'MEMBER'}
+              </span>
+              {/* ADD REFRESH BUTTON */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRefresh();
+                }}
+                className="text-xs font-bold px-3 py-1 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-all"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-2 hover:bg-white/5 rounded-lg transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Member Status Card - Show for anyone who is a member (including creator) */}
+        {memberData && (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+            <p className="text-blue-400 font-semibold mb-2">Your Status</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-slate-400">Total Contributed</p>
+                <p className="text-white font-semibold">${(memberData.totalContributed / 1_000_000).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-slate-400">This Round</p>
+                <p className="text-white font-semibold">
+                  {memberData.hasDepositedCurrentRound ? '✅ Paid' : '⏳ Pending'}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-400">Rounds Completed</p>
+                <p className="text-white font-semibold">{memberData.roundsParticipated}</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Payout Status</p>
+                <p className="text-white font-semibold">
+                  {memberData.hasReceivedPayout ? '✅ Received' : '⏳ Waiting'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Not a Member Warning - Show for creator who hasn't joined */}
+        {isCreator && !memberData && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <Clock className="w-5 h-5 text-yellow-400 mt-0.5" />
+              <div className="text-sm">
+                <p className="text-yellow-400 font-medium mb-1">You haven't joined as a member yet</p>
+                <p className="text-slate-300 text-xs">
+                  As the creator, you were automatically joined during committee creation. If you see this message, please refresh the page.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rest of the component stays the same... */}
+        {/* Payout Ready Alert */}
+        {canDistributePayout && (
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <Sparkles className="w-5 h-5 text-purple-400 mt-0.5" />
+              <div>
+                <p className="text-purple-400 font-semibold mb-1">Ready for Payout!</p>
+                <p className="text-slate-300 text-sm">
+                  All members have contributed. Click below to distribute ${totalPool.toFixed(2)} USDC to the next recipient.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Completed Badge */}
+        {isCompleted && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5" />
+              <div>
+                <p className="text-emerald-400 font-semibold mb-1">Committee Completed! 🎉</p>
+                <p className="text-slate-300 text-sm">
+                  All members have received their payouts. This committee has successfully completed its cycle!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+            <p className="text-slate-400 text-xs mb-1">Per Round</p>
+            <p className="text-white font-bold text-xl">${monthlyAmount.toFixed(2)}</p>
+            <p className="text-emerald-400 text-xs capitalize">{frequencyLabel}</p>
+          </div>
+          <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+            <p className="text-slate-400 text-xs mb-1">Total Pool</p>
+            <p className="text-white font-bold text-xl">${totalPool.toFixed(2)}</p>
+            <p className="text-emerald-400 text-xs">per payout</p>
+          </div>
+          <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+            <p className="text-slate-400 text-xs mb-1">Progress</p>
+            <p className="text-white font-bold text-xl">Round {committee.currentRound}</p>
+            <p className="text-slate-400 text-xs">{committee.depositsThisRound || 0}/{committee.currentMembers} deposits</p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {/* Contribute Button - Show for anyone who is a member and hasn't paid */}
+          {canContribute && (
+            <button
+              onClick={onContribute}
+              disabled={contributing}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white py-4 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
+            >
+              {contributing ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <DollarSign className="w-5 h-5" />
+                  <span>Contribute ${monthlyAmount.toFixed(2)} USDC</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Distribute Payout Button */}
+          {canDistributePayout && (
+            <button
+              onClick={onDistributePayout}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
+            >
+              <Sparkles className="w-5 h-5" />
+              <span>Distribute ${totalPool.toFixed(2)} Payout</span>
+            </button>
+          )}
+
+          {/* Waiting Message for non-creators in payout phase */}
+          {!isCreator && committee.phase && Object.keys(committee.phase)[0] === 'payout' && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <Clock className="w-5 h-5 text-yellow-400 mt-0.5" />
+                <div className="text-sm">
+                  <p className="text-yellow-400 font-medium mb-1">Waiting for Payout Distribution</p>
+                  <p className="text-slate-300 text-xs">
+                    The committee creator will distribute the payout shortly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Waiting for Deposits Message */}
+          {memberData && committee.phase && Object.keys(committee.phase)[0] === 'deposit' && !canContribute && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <Clock className="w-5 h-5 text-blue-400 mt-0.5" />
+                <div className="text-sm">
+                  <p className="text-blue-400 font-medium mb-1">Waiting for Other Members</p>
+                  <p className="text-slate-300 text-xs">
+                    You've contributed for this round. Waiting for {committee.currentMembers - (committee.depositsThisRound || 0)} other member(s) to deposit.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Secondary Action Buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={onViewMembers}
+              className="bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all border border-white/10 hover:border-emerald-500/30"
+            >
+              <Users className="w-4 h-4" />
+              <span>View Members</span>
+            </button>
+            <button
+              onClick={onShare}
+              className="bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all border border-white/10 hover:border-emerald-500/30"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <span>Share Invite</span>
+            </button>
+          </div>
+        </div>
+
+        {/* How It Works Info Box */}
+        <div className="mt-6 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm">
+              <p className="text-emerald-400 font-medium mb-1">How it works</p>
+              <p className="text-slate-300 text-xs leading-relaxed">
+                Each member contributes ${monthlyAmount.toFixed(2)} every {frequencyLabel}.
+                One member receives the full pool of ${totalPool.toFixed(2)} per round.
+                This continues for {committee.maxMembers} rounds until everyone gets their payout.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Payout History */}
+        {committee.membersWhoReceivedPayout && committee.membersWhoReceivedPayout.length > 0 && (
+          <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-4">
+            <p className="text-white font-semibold mb-3 text-sm">Payout History</p>
+            <div className="space-y-2">
+              {committee.membersWhoReceivedPayout.map((member: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between text-xs bg-black/20 rounded-lg p-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                      <span className="text-emerald-400 text-xs font-bold">{idx + 1}</span>
+                    </div>
+                    <span className="text-slate-300 font-mono">
+                      {member.toString().slice(0, 6)}...{member.toString().slice(-4)}
+                    </span>
+                  </div>
+                  <span className="text-emerald-400 font-semibold">${totalPool.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MembersModal({ committee, members, onClose }: any) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -943,7 +1691,7 @@ function MembersModal({ committee, members, onClose }: any) {
                         {member.authority.toString().slice(0, 8)}...
                       </p>
                       <p className="text-slate-400 text-xs">
-                        {member.lastDepositRound === committee.currentRound ? '✅ Deposited' : '⏳ Pending'}
+                        {member.hasDepositedCurrentRound ? '✅ Deposited' : '⏳ Pending'}
                       </p>
                     </div>
                   </div>
@@ -1018,301 +1766,3 @@ function ShareInviteModal({ committee, onClose }: any) {
     </div>
   );
 }
-          </div>
-        </div>
-      )}
-
-      {showCreateModal && (
-        <CreateCommitteeModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={fetchCommittees}
-          program={getProgram()}
-          userPublicKey={publicKey}
-        />
-      )}
-
-      {showJoinModal && (
-        <JoinCommitteeModal
-          onClose={() => setShowJoinModal(false)}
-          onJoin={handleJoinCommittee}
-        />
-      )}
-
-      {selectedCommittee && (
-        <CommitteeDetailsModal
-          committee={selectedCommittee}
-          onClose={() => setSelectedCommittee(null)}
-          onContribute={() => handleContribute(selectedCommittee)}
-          onDistributePayout={() => handleDistributePayout(selectedCommittee)}
-          onViewMembers={() => {
-            fetchMembers(selectedCommittee.publicKey);
-            setShowMembersModal(true);
-          }}
-          onShare={() => setShowShareModal(true)}
-          contributing={contributing}
-        />
-      )}
-
-      {showMembersModal && selectedCommittee && (
-        <MembersModal
-          committee={selectedCommittee}
-          members={members}
-          onClose={() => setShowMembersModal(false)}
-        />
-      )}
-
-      {showShareModal && selectedCommittee && (
-        <ShareInviteModal
-          committee={selectedCommittee}
-          onClose={() => setShowShareModal(false)}
-        />
-      )}
-    </main>
-  );
-}
-
-// Modal components remain the same, just updating the key checks
-
-function CommitteeDetailsModal({
-  committee,
-  onClose,
-  onContribute,
-  onDistributePayout,
-  onViewMembers,
-  onShare,
-  contributing
-}: any) {
-  const monthlyAmount = committee.monthlyContribution / 1_000_000;
-  const totalPool = monthlyAmount * committee.maxMembers;
-  const isCreator = committee.role === 'creator';
-  const memberData = committee.memberAccount;
-  const phaseInfo = PHASE_LABELS[Object.keys(committee.phase || {})[0] || 'joining'];
-  const frequencyLabel = Object.keys(committee.frequency || {})[0] || 'monthly';
-
-  // ✅ Check using round number instead of boolean
-  const canContribute =
-    committee.phase &&
-    Object.keys(committee.phase)[0] === 'deposit' &&
-    memberData?.lastDepositRound !== committee.currentRound;
-
-  const canDistributePayout =
-    isCreator &&
-    committee.phase &&
-    Object.keys(committee.phase)[0] === 'payout';
-
-  const isCompleted =
-    committee.phase &&
-    Object.keys(committee.phase)[0] === 'completed';
-
-  // ✅ Check if member has deposited for current round
-  const hasDepositedThisRound = memberData?.lastDepositRound === committee.currentRound;
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-900 rounded-3xl p-8 max-w-2xl w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">{committee.name}</h2>
-            <div className="flex items-center space-x-2">
-              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${phaseInfo.color}`}>
-                {phaseInfo.label}
-              </span>
-              <span className={`text-xs font-bold px-2 py-1 rounded-full border ${isCreator ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
-                {isCreator ? 'CREATOR' : 'MEMBER'}
-              </span>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {!isCreator && memberData && (
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
-            <p className="text-blue-400 font-semibold mb-2">Your Status</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-slate-400">Total Contributed</p>
-                <p className="text-white font-semibold">${(memberData.totalContributed / 1_000_000).toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-slate-400">This Round</p>
-                <p className="text-white font-semibold">
-                  {hasDepositedThisRound ? '✅ Paid' : '⏳ Pending'}
-                </p>
-              </div>
-              <div>
-                <p className="text-slate-400">Rounds Completed</p>
-                <p className="text-white font-semibold">{memberData.roundsParticipated}</p>
-              </div>
-              <div>
-                <p className="text-slate-400">Payout Status</p>
-                <p className="text-white font-semibold">
-                  {memberData.hasReceivedPayout ? '✅ Received' : '⏳ Waiting'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {canDistributePayout && (
-          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-start space-x-3">
-              <Sparkles className="w-5 h-5 text-purple-400 mt-0.5" />
-              <div>
-                <p className="text-purple-400 font-semibold mb-1">Ready for Payout!</p>
-                <p className="text-slate-300 text-sm">
-                  All members have contributed. Click below to distribute ${totalPool.toFixed(2)} USDC. The next round will start automatically!
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isCompleted && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-start space-x-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5" />
-              <div>
-                <p className="text-emerald-400 font-semibold mb-1">Committee Completed! 🎉</p>
-                <p className="text-slate-300 text-sm">
-                  All members have received their payouts. This committee has successfully completed its cycle!
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-            <p className="text-slate-400 text-xs mb-1">Per Round</p>
-            <p className="text-white font-bold text-xl">${monthlyAmount.toFixed(2)}</p>
-            <p className="text-emerald-400 text-xs capitalize">{frequencyLabel}</p>
-          </div>
-          <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-            <p className="text-slate-400 text-xs mb-1">Total Pool</p>
-            <p className="text-white font-bold text-xl">${totalPool.toFixed(2)}</p>
-            <p className="text-emerald-400 text-xs">per payout</p>
-          </div>
-          <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-            <p className="text-slate-400 text-xs mb-1">Progress</p>
-            <p className="text-white font-bold text-xl">Round {committee.currentRound}</p>
-            <p className="text-slate-400 text-xs">{committee.depositsThisRound || 0}/{committee.currentMembers} deposits</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {canContribute && (
-            <button
-              onClick={onContribute}
-              disabled={contributing}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white py-4 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
-            >
-              {contributing ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <DollarSign className="w-5 h-5" />
-                  <span>Contribute ${monthlyAmount.toFixed(2)} USDC</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {canDistributePayout && (
-            <button
-              onClick={onDistributePayout}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span>Distribute ${totalPool.toFixed(2)} Payout</span>
-            </button>
-          )}
-
-          {!isCreator && committee.phase && Object.keys(committee.phase)[0] === 'payout' && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
-              <div className="flex items-start space-x-3">
-                <Clock className="w-5 h-5 text-yellow-400 mt-0.5" />
-                <div className="text-sm">
-                  <p className="text-yellow-400 font-medium mb-1">Waiting for Payout Distribution</p>
-                  <p className="text-slate-300 text-xs">
-                    The committee creator will distribute the payout shortly. Next round will start automatically.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {committee.phase && Object.keys(committee.phase)[0] === 'deposit' && !canContribute && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-              <div className="flex items-start space-x-3">
-                <Clock className="w-5 h-5 text-blue-400 mt-0.5" />
-                <div className="text-sm">
-                  <p className="text-blue-400 font-medium mb-1">Waiting for Other Members</p>
-                  <p className="text-slate-300 text-xs">
-                    You've contributed for this round. Waiting for {committee.currentMembers - (committee.depositsThisRound || 0)} other member(s) to deposit.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={onViewMembers}
-              className="bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all border border-white/10 hover:border-emerald-500/30"
-            >
-              <Users className="w-4 h-4" />
-              <span>View Members</span>
-            </button>
-            <button
-              onClick={onShare}
-              className="bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all border border-white/10 hover:border-emerald-500/30"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-              <span>Share Invite</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-6 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-          <div className="flex items-start space-x-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-            <div className="text-sm">
-              <p className="text-emerald-400 font-medium mb-1">How it works</p>
-              <p className="text-slate-300 text-xs leading-relaxed">
-                Each member contributes ${monthlyAmount.toFixed(2)} every {frequencyLabel}.
-                One member receives the full pool of ${totalPool.toFixed(2)} per round.
-                This continues for {committee.maxMembers} rounds until everyone gets their payout.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {committee.membersWhoReceivedPayout && committee.membersWhoReceivedPayout.length > 0 && (
-          <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-4">
-            <p className="text-white font-semibold mb-3 text-sm">Payout History</p>
-            <div className="space-y-2">
-              {committee.membersWhoReceivedPayout.map((member: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between text-xs bg-black/20 rounded-lg p-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                      <span className="text-emerald-400 text-xs font-bold">{idx + 1}</span>
-                    </div>
-                    <span className="text-slate-300 font-mono">
-                      {member.toString().slice(0, 6)}...{member.toString().slice(-4)}
-                    </span>
-                  </div>
-                  <span className="text-emerald-400 font-semibold">${totalPool.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}

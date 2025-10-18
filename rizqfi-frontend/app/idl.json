@@ -1,5 +1,5 @@
 {
-  "address": "sv1jTY2Rs2H7fXVVj3a6WoP6GD3X2j5tHwYkdfZQ9oP",
+  "address": "ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN",
   "metadata": {
     "name": "rizqfi_contracts",
     "version": "0.1.0",
@@ -397,6 +397,29 @@
       "args": []
     },
     {
+      "name": "reset_all_deposits_for_new_round",
+      "discriminator": [
+        204,
+        184,
+        199,
+        188,
+        102,
+        140,
+        187,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "committee"
+        },
+        {
+          "name": "member",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "reset_member_deposit_status",
       "discriminator": [
         254,
@@ -439,6 +462,56 @@
               }
             ]
           }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reset_member_for_round",
+      "discriminator": [
+        127,
+        64,
+        119,
+        28,
+        114,
+        109,
+        125,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "committee"
+        },
+        {
+          "name": "member",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reset_round",
+      "discriminator": [
+        199,
+        184,
+        226,
+        203,
+        15,
+        56,
+        59,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "committee",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "committee"
+          ]
         }
       ],
       "args": []
@@ -542,6 +615,11 @@
       "code": 6013,
       "name": "CommitteeNotCompleted",
       "msg": "Committee not completed yet"
+    },
+    {
+      "code": 6014,
+      "name": "RoundAlreadyStarted",
+      "msg": "Round has already started with deposits"
     }
   ],
   "types": [
