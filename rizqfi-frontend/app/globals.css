@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/* Smooth animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.6s ease-out;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Wallet adapter custom styling */
+.wallet-adapter-button {
+  background-color: #059669 !important;
+  border-radius: 0.75rem !important;
+  font-weight: 600 !important;
+  padding: 0.75rem 1.5rem !important;
+  transition: all 0.2s !important;
+}
+
+.wallet-adapter-button:hover {
+  background-color: #047857 !important;
+}
+
+.wallet-adapter-button-trigger {
+  background-color: #059669 !important;
+}
+
+.wallet-adapter-button-trigger:hover {
+  background-color: #047857 !important;
+}
+
+.wallet-adapter-dropdown {
+  background-color: #0f172a !important;
+  border: 1px solid #334155 !important;
+}
+
+.wallet-adapter-dropdown-list {
+  background-color: #0f172a !important;
+}
+
+.wallet-adapter-dropdown-list-item:hover {
+  background-color: #1e293b !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.wallet-adapter-modal {
+  background-color: #0f172a !important;
+  border: 1px solid #334155 !important;
+  border-radius: 1rem !important;
+}
