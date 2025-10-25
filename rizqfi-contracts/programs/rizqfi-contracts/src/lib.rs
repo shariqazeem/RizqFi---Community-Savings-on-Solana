@@ -10,6 +10,7 @@ pub mod rizqfi_contracts {
     // Create a new savings committee
     pub fn create_committee(
         ctx: Context<CreateCommittee>,
+        index: u32,
         name: String,
         monthly_contribution: u64,
         max_members: u8,
@@ -19,11 +20,12 @@ pub mod rizqfi_contracts {
         start_date: i64,
     ) -> Result<()> {
         let committee = &mut ctx.accounts.committee;
-        
+
         require!(max_members >= 2 && max_members <= 20, ErrorCode::InvalidMemberCount);
         require!(monthly_contribution > 0, ErrorCode::InvalidContribution);
-        
+
         committee.authority = ctx.accounts.authority.key();
+        committee.index = index;
         committee.name = name;
         committee.monthly_contribution = monthly_contribution;
         committee.max_members = max_members;
@@ -41,8 +43,8 @@ pub mod rizqfi_contracts {
         committee.next_payout_recipient = 0;
         committee.members_who_received_payout = vec![];
         committee.phase = CommitteePhase::Joining;
-        
-        msg!("Committee created: {}", committee.name);
+
+        msg!("Committee created: {} (index: {})", committee.name, index);
         Ok(())
     }
 
@@ -130,11 +132,13 @@ pub mod rizqfi_contracts {
         
         let total_payout = committee.monthly_contribution * committee.current_members as u64;
         let authority_key = committee.authority;
+        let index = committee.index;
         let bump = ctx.bumps.committee;
-        
+
         let seeds = &[
-            b"committee",
+            b"committee".as_ref(),
             authority_key.as_ref(),
+            &index.to_le_bytes(),
             &[bump],
         ];
         let signer = &[&seeds[..]];
@@ -249,22 +253,24 @@ pub mod rizqfi_contracts {
     // Close committee and return remaining funds
     pub fn close_committee(ctx: Context<CloseCommittee>) -> Result<()> {
         let committee = &ctx.accounts.committee;
-        
+
         require!(committee.phase == CommitteePhase::Completed, ErrorCode::CommitteeNotCompleted);
-        
+
         let vault_balance = ctx.accounts.committee_vault.amount;
-        
+
         if vault_balance > 0 {
             let authority_key = committee.authority;
+            let index = committee.index;
             let bump = ctx.bumps.committee;
-            
+
             let seeds = &[
-                b"committee",
+                b"committee".as_ref(),
                 authority_key.as_ref(),
+                &index.to_le_bytes(),
                 &[bump],
             ];
             let signer = &[&seeds[..]];
-            
+
             let cpi_accounts = Transfer {
                 from: ctx.accounts.committee_vault.to_account_info(),
                 to: ctx.accounts.authority_token_account.to_account_info(),
@@ -272,10 +278,10 @@ pub mod rizqfi_contracts {
             };
             let cpi_program = ctx.accounts.token_program.to_account_info();
             let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-            
+
             token::transfer(cpi_ctx, vault_balance)?;
         }
-        
+
         msg!("Committee closed, remaining funds returned");
         Ok(())
     }
@@ -284,17 +290,17 @@ pub mod rizqfi_contracts {
 
 // Account structures
 #[derive(Accounts)]
-#[instruction(name: String)]
+#[instruction(index: u32)]
 pub struct CreateCommittee<'info> {
     #[account(
         init,
         payer = authority,
         space = 8 + Committee::INIT_SPACE,
-        seeds = [b"committee", authority.key().as_ref()],
+        seeds = [b"committee", authority.key().as_ref(), &index.to_le_bytes()],
         bump
     )]
     pub committee: Account<'info, Committee>,
-    
+
     #[account(
         init,
         payer = authority,
@@ -304,12 +310,12 @@ pub struct CreateCommittee<'info> {
         bump
     )]
     pub vault: Account<'info, TokenAccount>,
-    
+
     pub usdc_mint: Account<'info, Mint>,
-    
+
     #[account(mut)]
     pub authority: Signer<'info>,
-    
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -366,23 +372,23 @@ pub struct Contribute<'info> {
 pub struct DistributePayout<'info> {
     #[account(
         mut,
-        seeds = [b"committee", committee.authority.as_ref()],
+        seeds = [b"committee", committee.authority.as_ref(), &committee.index.to_le_bytes()],
         bump
     )]
     pub committee: Account<'info, Committee>,
-    
+
     #[account(mut)]
     pub recipient_member: Account<'info, Member>,
-    
+
     #[account(
         mut,
         address = committee.vault
     )]
     pub committee_vault: Account<'info, TokenAccount>,
-    
+
     #[account(mut)]
     pub recipient_token_account: Account<'info, TokenAccount>,
-    
+
     pub token_program: Program<'info, Token>,
 }
 
@@ -410,24 +416,24 @@ pub struct RecordMissedPayment<'info> {
 pub struct CloseCommittee<'info> {
     #[account(
         mut,
-        seeds = [b"committee", authority.key().as_ref()],
+        seeds = [b"committee", authority.key().as_ref(), &committee.index.to_le_bytes()],
         bump,
         close = authority
     )]
     pub committee: Account<'info, Committee>,
-    
+
     #[account(
         mut,
         address = committee.vault
     )]
     pub committee_vault: Account<'info, TokenAccount>,
-    
+
     #[account(mut)]
     pub authority_token_account: Account<'info, TokenAccount>,
-    
+
     #[account(mut)]
     pub authority: Signer<'info>,
-    
+
     pub token_program: Program<'info, Token>,
 }
 
@@ -438,6 +444,7 @@ pub struct CloseCommittee<'info> {
 #[derive(InitSpace)]
 pub struct Committee {
     pub authority: Pubkey,
+    pub index: u32,
     #[max_len(50)]
     pub name: String,
     pub monthly_contribution: u64,

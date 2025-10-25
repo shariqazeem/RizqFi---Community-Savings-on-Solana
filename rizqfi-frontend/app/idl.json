@@ -42,6 +42,11 @@
               {
                 "kind": "account",
                 "path": "authority"
+              },
+              {
+                "kind": "account",
+                "path": "committee.index",
+                "account": "Committee"
               }
             ]
           }
@@ -164,6 +169,10 @@
               {
                 "kind": "account",
                 "path": "authority"
+              },
+              {
+                "kind": "arg",
+                "path": "index"
               }
             ]
           }
@@ -212,6 +221,10 @@
         }
       ],
       "args": [
+        {
+          "name": "index",
+          "type": "u32"
+        },
         {
           "name": "name",
           "type": "string"
@@ -289,6 +302,11 @@
               {
                 "kind": "account",
                 "path": "committee.authority",
+                "account": "Committee"
+              },
+              {
+                "kind": "account",
+                "path": "committee.index",
                 "account": "Committee"
               }
             ]
@@ -631,6 +649,10 @@
           {
             "name": "authority",
             "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u32"
           },
           {
             "name": "name",
