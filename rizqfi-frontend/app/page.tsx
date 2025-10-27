@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { celebrateSuccess, celebratePayout, celebrateJoin } from './utils/confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
+import { TrustScoreWidget } from './components/TrustScoreWidget';
 import idl from './idl.json';
 
 const PROGRAM_ID = new PublicKey('ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN');
@@ -36,6 +37,16 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [contributing, setContributing] = useState(false);
   const [solBalance, setSolBalance] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Scroll detection for navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const getProgram = () => {
     if (!wallet || !publicKey) return null;
@@ -728,8 +739,24 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950">
-      <nav className="border-b border-white/5 backdrop-blur-xl bg-black/20">
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 relative"
+          style={{
+            background: `
+              radial-gradient(circle at 80% 10%, rgba(22,219,101,0.1), transparent 60%),
+              radial-gradient(circle at 20% 90%, rgba(59,130,246,0.08), transparent 60%),
+              linear-gradient(to bottom right, rgb(2,6,23), rgb(15,23,42), rgb(6,78,59))
+            `
+          }}>
+      {/* Ambient background glow */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+      </div>
+      <nav className={`fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300 ${
+        isScrolled
+          ? 'border-white/10 backdrop-blur-xl bg-black/40 shadow-lg shadow-black/20'
+          : 'border-white/5 backdrop-blur-sm bg-black/20'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center space-x-3">
@@ -744,13 +771,41 @@ export default function Home() {
                 <p className="text-emerald-400 text-xs font-medium">Community Savings</p>
               </div>
             </div>
-            <WalletButton />
+            {connected && publicKey ? (
+              <div className="flex items-center gap-3">
+                {/* Wallet Address Pill */}
+                <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-xl border border-emerald-500/30 relative group"
+                     style={{boxShadow: '0 0 20px rgba(16,185,129,0.15), inset 0 0 20px rgba(255,255,255,0.03)'}}>
+                  {/* Solana Logo */}
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
+                      <path d="M4.5 7.5L12 3l7.5 4.5v9L12 21l-7.5-4.5v-9z"/>
+                    </svg>
+                  </div>
+                  {/* Address */}
+                  <span className="text-white font-mono text-sm font-medium">
+                    {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}
+                  </span>
+                  {/* Glow effect on hover */}
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                </div>
+                {/* SOL Balance Badge */}
+                <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 backdrop-blur-xl border border-white/10">
+                  <span className={`text-xs font-semibold ${solBalance < 0.01 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {solBalance.toFixed(3)} SOL
+                  </span>
+                </div>
+                <WalletButton />
+              </div>
+            ) : (
+              <WalletButton />
+            )}
           </div>
         </div>
       </nav>
 
       {!connected ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-24 pt-32">
           <div className="text-center animate-fadeIn">
             <div className="inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-2 mb-6 sm:mb-8">
               <Sparkles className="w-4 h-4 text-emerald-400" />
@@ -771,21 +826,13 @@ export default function Home() {
           </div>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 animate-fadeIn">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 pt-24 sm:pt-32 animate-fadeIn">
+          {/* Trust Score Widget */}
+          <TrustScoreWidget committees={committees} />
+
           <div className="mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">Welcome back! 👋</h2>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-              <p className="text-slate-400 flex items-center space-x-2 text-sm sm:text-base">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="truncate">{publicKey?.toString().slice(0, 8)}...{publicKey?.toString().slice(-8)}</span>
-              </p>
-              <div className="flex items-center space-x-2 bg-white/5 px-3 py-1 rounded-lg border border-white/10 w-fit">
-                <span className="text-slate-400 text-xs sm:text-sm">Balance:</span>
-                <span className={`text-xs sm:text-sm font-semibold ${solBalance < 0.01 ? 'text-red-400' : 'text-emerald-400'}`}>
-                  {solBalance.toFixed(4)} SOL
-                </span>
-              </div>
-            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-wide">Welcome back! 👋</h2>
+            <p className="text-slate-400 text-sm sm:text-base mt-2">Manage your committees and grow your savings</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12">
@@ -807,9 +854,9 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-8 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-8 border border-white/10 relative" style={{boxShadow: 'inset 0 0 40px rgba(255,255,255,0.02), 0 0 60px rgba(16,185,129,0.08)'}}>
             <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <h3 className="text-xl sm:text-2xl font-bold text-white">My Committees</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-white tracking-wider">My Committees</h3>
             </div>
 
             {loading ? (
@@ -858,8 +905,11 @@ export default function Home() {
                         const refreshed = await refreshCommitteeData(committee);
                         setSelectedCommittee(refreshed);
                       }}
-                      className="group glass-card rounded-3xl p-4 sm:p-6 border border-white/20 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/20"
+                      className="group glass-card rounded-3xl p-4 sm:p-6 border border-white/20 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative"
+                      style={{boxShadow: '0 0 60px rgba(16,185,129,0.08), inset 0 0 30px rgba(255,255,255,0.02)'}}
                     >
+                      {/* Ambient glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -889,16 +939,16 @@ export default function Home() {
                         <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 group-hover:text-emerald-400 transition-all flex-shrink-0 ml-2" />
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5">
+                      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 relative z-10">
+                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5 relative" style={{boxShadow: 'inset 0 0 20px rgba(0,0,0,0.3)'}}>
                           <p className="text-slate-400 text-[10px] sm:text-xs">Per Round</p>
                           <p className="text-white font-bold text-sm sm:text-base">${monthlyAmount.toFixed(2)}</p>
                         </div>
-                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5">
+                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5 relative" style={{boxShadow: 'inset 0 0 20px rgba(0,0,0,0.3)'}}>
                           <p className="text-slate-400 text-[10px] sm:text-xs">Total Pool</p>
                           <p className="text-white font-bold text-sm sm:text-base">${totalPool.toFixed(2)}</p>
                         </div>
-                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5">
+                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5 relative" style={{boxShadow: 'inset 0 0 20px rgba(0,0,0,0.3)'}}>
                           <p className="text-slate-400 text-[10px] sm:text-xs">Deposits</p>
                           <p className="text-white font-bold text-sm sm:text-base">{committee.depositsThisRound || 0}/{committee.currentMembers}</p>
                         </div>
@@ -1220,8 +1270,11 @@ function CreateCommitteeModal({ onClose, onSuccess, program, userPublicKey }: an
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto relative"
+        style={{boxShadow: '0 0 80px rgba(16,185,129,0.15), inset 0 0 40px rgba(255,255,255,0.03)'}}
       >
+        {/* Ambient modal glow */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10 rounded-3xl pointer-events-none"></div>
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-3xl font-bold text-white">Create Committee</h2>
@@ -1393,9 +1446,12 @@ function JoinCommitteeModal({ onClose, onJoin }: { onClose: () => void; onJoin: 
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl"
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl relative"
+        style={{boxShadow: '0 0 80px rgba(16,185,129,0.15), inset 0 0 40px rgba(255,255,255,0.03)'}}
       >
-        <div className="text-center mb-6">
+        {/* Ambient modal glow */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10 rounded-3xl pointer-events-none"></div>
+        <div className="text-center mb-6 relative z-10">
           <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Users className="w-8 h-8 text-emerald-400" />
           </div>
@@ -1403,7 +1459,7 @@ function JoinCommitteeModal({ onClose, onJoin }: { onClose: () => void; onJoin: 
           <p className="text-slate-400 text-sm">Enter the committee address</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
           <div>
             <label className="block text-slate-300 mb-2 text-sm">Committee Address</label>
             <input
@@ -1499,9 +1555,12 @@ function CommitteeDetailsModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="bg-slate-900 rounded-3xl p-8 max-w-2xl w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-slate-900 rounded-3xl p-8 max-w-2xl w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto relative"
+        style={{boxShadow: '0 0 80px rgba(16,185,129,0.15), inset 0 0 40px rgba(255,255,255,0.03)'}}
       >
-        <div className="flex items-start justify-between mb-6">
+        {/* Ambient modal glow */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10 rounded-3xl pointer-events-none"></div>
+        <div className="flex items-start justify-between mb-6 relative z-10">
           <div>
             <h2 className="text-3xl font-bold text-white mb-2">{committee.name}</h2>
             <div className="flex items-center space-x-2">
@@ -1787,9 +1846,12 @@ function MembersModal({ committee, members, onClose }: any) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl"
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl relative"
+        style={{boxShadow: '0 0 80px rgba(16,185,129,0.15), inset 0 0 40px rgba(255,255,255,0.03)'}}
       >
-        <div className="flex items-start justify-between mb-6">
+        {/* Ambient modal glow */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10 rounded-3xl pointer-events-none"></div>
+        <div className="flex items-start justify-between mb-6 relative z-10">
           <div>
             <h2 className="text-2xl font-bold text-white mb-1">Members</h2>
             <p className="text-slate-400 text-sm">{committee.name}</p>
@@ -1853,9 +1915,12 @@ function ShareInviteModal({ committee, onClose }: any) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl"
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl relative"
+        style={{boxShadow: '0 0 80px rgba(16,185,129,0.15), inset 0 0 40px rgba(255,255,255,0.03)'}}
       >
-        <div className="flex items-start justify-between mb-6">
+        {/* Ambient modal glow */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10 rounded-3xl pointer-events-none"></div>
+        <div className="flex items-start justify-between mb-6 relative z-10">
           <h2 className="text-2xl font-bold text-white">Share Committee</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white">×</button>
         </div>
