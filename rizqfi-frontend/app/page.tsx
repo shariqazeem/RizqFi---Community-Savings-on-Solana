@@ -8,6 +8,8 @@ import { Program, AnchorProvider, web3, BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import toast from 'react-hot-toast';
 import { celebrateSuccess, celebratePayout, celebrateJoin } from './utils/confetti';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LoadingSkeleton } from './components/LoadingSkeleton';
 import idl from './idl.json';
 
 const PROGRAM_ID = new PublicKey('ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN');
@@ -748,20 +750,20 @@ export default function Home() {
       </nav>
 
       {!connected ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-24">
           <div className="text-center animate-fadeIn">
-            <div className="inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-2 mb-8">
+            <div className="inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-2 mb-6 sm:mb-8">
               <Sparkles className="w-4 h-4 text-emerald-400" />
               <span className="text-emerald-400 text-sm font-medium">Powered by Solana</span>
             </div>
 
-            <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 leading-tight px-4">
               Traditional Committees,
               <br />
               <span className="text-emerald-400">Blockchain Trust</span>
             </h1>
 
-            <p className="text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-slate-400 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-4">
               Join transparent savings circles on Solana. No banks, no middlemen – just your community and smart contracts ensuring fairness.
             </p>
 
@@ -769,49 +771,50 @@ export default function Home() {
           </div>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-fadeIn">
-          <div className="mb-12">
-            <h2 className="text-4xl font-bold text-white mb-3">Welcome back! 👋</h2>
-            <div className="flex items-center space-x-4">
-              <p className="text-slate-400 flex items-center space-x-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 animate-fadeIn">
+          <div className="mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">Welcome back! 👋</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <p className="text-slate-400 flex items-center space-x-2 text-sm sm:text-base">
                 <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <span>{publicKey?.toString().slice(0, 8)}...{publicKey?.toString().slice(-8)}</span>
+                <span className="truncate">{publicKey?.toString().slice(0, 8)}...{publicKey?.toString().slice(-8)}</span>
               </p>
-              <div className="flex items-center space-x-2 bg-white/5 px-3 py-1 rounded-lg border border-white/10">
-                <span className="text-slate-400 text-sm">Balance:</span>
-                <span className={`text-sm font-semibold ${solBalance < 0.01 ? 'text-red-400' : 'text-emerald-400'}`}>
+              <div className="flex items-center space-x-2 bg-white/5 px-3 py-1 rounded-lg border border-white/10 w-fit">
+                <span className="text-slate-400 text-xs sm:text-sm">Balance:</span>
+                <span className={`text-xs sm:text-sm font-semibold ${solBalance < 0.01 ? 'text-red-400' : 'text-emerald-400'}`}>
                   {solBalance.toFixed(4)} SOL
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 mb-12">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="group relative overflow-hidden bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white px-10 py-5 rounded-2xl font-bold flex items-center space-x-3 transition-all shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 hover:-translate-y-1"
+              className="group relative overflow-hidden bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 hover:-translate-y-1"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-              <Plus className="w-6 h-6 relative z-10 group-hover:rotate-90 transition-transform duration-300" />
-              <span className="relative z-10 text-lg">Create Committee</span>
+              <Plus className="w-5 h-5 sm:w-6 sm:h-6 relative z-10 group-hover:rotate-90 transition-transform duration-300" />
+              <span className="relative z-10 text-base sm:text-lg">Create Committee</span>
             </button>
             <button
               onClick={() => setShowJoinModal(true)}
-              className="group relative overflow-hidden bg-white/10 hover:bg-white/20 text-white px-10 py-5 rounded-2xl font-bold backdrop-blur-sm border-2 border-white/30 hover:border-emerald-400/50 transition-all hover:scale-105 hover:-translate-y-1 flex items-center space-x-3"
+              className="group relative overflow-hidden bg-white/10 hover:bg-white/20 text-white px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold backdrop-blur-sm border-2 border-white/30 hover:border-emerald-400/50 transition-all hover:scale-105 hover:-translate-y-1 flex items-center justify-center space-x-3"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-              <Users className="w-6 h-6 relative z-10" />
-              <span className="relative z-10 text-lg">Join Committee</span>
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 relative z-10" />
+              <span className="relative z-10 text-base sm:text-lg">Join Committee</span>
             </button>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-white">My Committees</h3>
-              {loading && <div className="text-emerald-400 text-sm">Loading...</div>}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-8 border border-white/10">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-xl sm:text-2xl font-bold text-white">My Committees</h3>
             </div>
 
-            {committees.length === 0 ? (
+            {loading ? (
+              <LoadingSkeleton />
+            ) : committees.length === 0 ? (
               <div className="text-center py-20">
                 <div className="relative inline-block mb-8">
                   <div className="w-32 h-32 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/10 animate-float">
@@ -821,9 +824,9 @@ export default function Home() {
                     <Plus className="w-6 h-6 text-white" />
                   </div>
                 </div>
-                <h3 className="text-white text-2xl font-bold mb-2">No committees yet</h3>
-                <p className="text-slate-400 text-lg mb-6">Start your savings journey by creating or joining a committee</p>
-                <div className="flex justify-center space-x-3">
+                <h3 className="text-white text-xl sm:text-2xl font-bold mb-2">No committees yet</h3>
+                <p className="text-slate-400 text-base sm:text-lg mb-6 px-4">Start your savings journey by creating or joining a committee</p>
+                <div className="flex flex-col sm:flex-row justify-center gap-3 px-4">
                   <button
                     onClick={() => setShowCreateModal(true)}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105"
@@ -855,49 +858,49 @@ export default function Home() {
                         const refreshed = await refreshCommitteeData(committee);
                         setSelectedCommittee(refreshed);
                       }}
-                      className="group glass-card rounded-3xl p-6 border border-white/20 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/20"
+                      className="group glass-card rounded-3xl p-4 sm:p-6 border border-white/20 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/20"
                     >
                       <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h4 className="text-white font-bold text-xl">{committee.name}</h4>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h4 className="text-white font-bold text-lg sm:text-xl truncate">{committee.name}</h4>
                             <span className={`text-xs font-bold px-3 py-1 rounded-full border ${phaseInfo.color}`}>
                               {phaseInfo.label}
                             </span>
-                            <span className={`text-xs font-bold px-2 py-1 rounded-full border ${isCreator ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full border whitespace-nowrap ${isCreator ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
                               {isCreator ? 'CREATOR' : 'MEMBER'}
                             </span>
                           </div>
-                          <div className="flex items-center space-x-4 text-sm text-slate-400">
+                          <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-400">
                             <span className="flex items-center space-x-1">
-                              <Users className="w-4 h-4" />
+                              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                               <span>{committee.currentMembers}/{committee.maxMembers}</span>
                             </span>
                             <span className="flex items-center space-x-1">
-                              <Clock className="w-4 h-4" />
+                              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                               <span>{frequencyLabel}</span>
                             </span>
                             <span className="flex items-center space-x-1">
-                              <Calendar className="w-4 h-4" />
+                              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                               <span>Round {committee.currentRound}</span>
                             </span>
                           </div>
                         </div>
-                        <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 transition-all" />
+                        <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 group-hover:text-emerald-400 transition-all flex-shrink-0 ml-2" />
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3 mb-4">
-                        <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-                          <p className="text-slate-400 text-xs">Per Round</p>
-                          <p className="text-white font-bold">${monthlyAmount.toFixed(2)}</p>
+                      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5">
+                          <p className="text-slate-400 text-[10px] sm:text-xs">Per Round</p>
+                          <p className="text-white font-bold text-sm sm:text-base">${monthlyAmount.toFixed(2)}</p>
                         </div>
-                        <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-                          <p className="text-slate-400 text-xs">Total Pool</p>
-                          <p className="text-white font-bold">${totalPool.toFixed(2)}</p>
+                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5">
+                          <p className="text-slate-400 text-[10px] sm:text-xs">Total Pool</p>
+                          <p className="text-white font-bold text-sm sm:text-base">${totalPool.toFixed(2)}</p>
                         </div>
-                        <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-                          <p className="text-slate-400 text-xs">Deposits</p>
-                          <p className="text-white font-bold">{committee.depositsThisRound || 0}/{committee.currentMembers}</p>
+                        <div className="bg-black/20 rounded-lg p-2 sm:p-3 border border-white/5">
+                          <p className="text-slate-400 text-[10px] sm:text-xs">Deposits</p>
+                          <p className="text-white font-bold text-sm sm:text-base">{committee.depositsThisRound || 0}/{committee.currentMembers}</p>
                         </div>
                       </div>
 
@@ -1212,7 +1215,13 @@ function CreateCommitteeModal({ onClose, onSuccess, program, userPublicKey }: an
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.2 }}
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-3xl font-bold text-white">Create Committee</h2>
@@ -1356,7 +1365,7 @@ function CreateCommitteeModal({ onClose, onSuccess, program, userPublicKey }: an
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -1379,7 +1388,13 @@ function JoinCommitteeModal({ onClose, onJoin }: { onClose: () => void; onJoin: 
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.2 }}
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl"
+      >
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Users className="w-8 h-8 text-emerald-400" />
@@ -1427,7 +1442,7 @@ function JoinCommitteeModal({ onClose, onJoin }: { onClose: () => void; onJoin: 
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -1479,7 +1494,13 @@ function CommitteeDetailsModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-900 rounded-3xl p-8 max-w-2xl w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.2 }}
+        className="bg-slate-900 rounded-3xl p-8 max-w-2xl w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="text-3xl font-bold text-white mb-2">{committee.name}</h2>
@@ -1753,7 +1774,7 @@ function CommitteeDetailsModal({
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -1761,7 +1782,13 @@ function CommitteeDetailsModal({
 function MembersModal({ committee, members, onClose }: any) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.2 }}
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl"
+      >
         <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-white mb-1">Members</h2>
@@ -1804,7 +1831,7 @@ function MembersModal({ committee, members, onClose }: any) {
             ))
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -1821,7 +1848,13 @@ function ShareInviteModal({ committee, onClose }: any) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.2 }}
+        className="bg-slate-900 rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl"
+      >
         <div className="flex items-start justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Share Committee</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white">×</button>
@@ -1860,7 +1893,7 @@ function ShareInviteModal({ committee, onClose }: any) {
             Close
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
