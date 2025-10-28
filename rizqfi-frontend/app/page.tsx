@@ -14,7 +14,9 @@ import { TrustScoreWidget } from './components/TrustScoreWidget';
 import idl from './idl.json';
 
 const PROGRAM_ID = new PublicKey('ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN');
-const USDC_MINT_DEVNET = new PublicKey('CLPBhpt4QCijF5B5FQAaAY8ALDcKXTRcp3UiSyNLTEHZ');
+// Circle's official USDC token on Solana Devnet
+// Users can get testnet USDC from: https://faucet.circle.com/
+const USDC_MINT_DEVNET = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
 
 // Phase labels
 const PHASE_LABELS: Record<string, { label: string; color: string }> = {

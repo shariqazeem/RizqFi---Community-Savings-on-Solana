@@ -8,7 +8,7 @@
 
 **Bringing Pakistan's $2B+ Traditional Committee Savings to Blockchain**
 
-[Live Demo](https://rizqfi.vercel.app) • [Video Demo](#) • [Smart Contracts](./anchor)
+[Live Demo](https://rizqfi.vercel.app) • [Video Demo](#) • [Smart Contract](https://explorer.solana.com/address/ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN?cluster=devnet)
 
 </div>
 
@@ -127,7 +127,18 @@ Traditional committees rely on **ONE PERSON** to:
 └─────────────────────────────┘
 ```
 
-### Smart Contract Innovation
+### Smart Contract
+
+**Program ID (Devnet)**:
+```
+ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN
+```
+
+**View Live Contract**:
+- 🔍 [Solana Explorer](https://explorer.solana.com/address/ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN?cluster=devnet) - See all transactions
+- 📊 [SolScan](https://solscan.io/account/ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN?cluster=devnet) - Detailed analytics
+
+**Contract Innovation**:
 
 **PDA-Based Multi-Index Architecture**:
 - Each committee gets a unique Program Derived Address (PDA)
@@ -135,12 +146,14 @@ Traditional committees rely on **ONE PERSON** to:
 - Vault accounts secured with multi-signature authority
 - Automated phase transitions (Contributing → Distributing → Completed)
 
-**Key Smart Contract Features**:
+**Key Features**:
 - ✅ Authority validation on all actions
 - ✅ Overflow protection on amounts
 - ✅ Phase-based state machine
 - ✅ Secure vault management
 - ✅ Automated round progression
+- ✅ Real USDC deposits and payouts
+- ✅ 100% transparent and verifiable
 
 ### Tech Stack
 
@@ -171,6 +184,7 @@ Traditional committees rely on **ONE PERSON** to:
 - Rust & Anchor CLI
 - Solana CLI
 - Phantom/Solflare wallet
+- Testnet USDC from Circle Faucet
 
 ### Installation
 
@@ -187,6 +201,37 @@ npm install
 cd ../anchor
 anchor build
 ```
+
+### Getting Testnet USDC
+
+RizqFi now uses **Circle's official USDC token** on Solana Devnet. This means anyone can get testnet USDC for free!
+
+**Step 1: Get Your Wallet Address**
+1. Install Phantom or Solflare wallet
+2. Switch to Solana Devnet
+3. Copy your wallet address
+
+**Step 2: Get Testnet USDC**
+
+**Option A: Circle Faucet (Recommended)**
+1. Visit [Circle's USDC Faucet](https://faucet.circle.com/)
+2. Paste your Solana wallet address
+3. Click "Get USDC" to receive testnet tokens
+
+**Option B: Circle Sandbox (More USDC)**
+1. Sign up at [Circle Mint Sandbox](https://app-sandbox.circle.com/)
+2. Follow the [Circle USDC transfer tutorial](https://developers.circle.com/stablecoins/docs/transfer-usdc-on-solana-devnet)
+3. Use the mock wire transfer to get larger amounts of testnet USDC
+
+**USDC Token Details**:
+- **Devnet Address**: `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`
+- **Network**: Solana Devnet
+- **Decimals**: 6
+
+**Step 3: Add USDC Token to Your Wallet**
+1. In your Phantom/Solflare wallet, go to token management
+2. Add custom token with address: `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`
+3. You should now see your USDC balance
 
 ### Running Locally
 
