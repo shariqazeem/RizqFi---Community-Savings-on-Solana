@@ -8,7 +8,7 @@
 
 **Bringing Pakistan's $2B+ Traditional Committee Savings to Blockchain**
 
-[Live Demo](https://rizqfi.vercel.app) • [Video Demo](#) • [Smart Contract](https://explorer.solana.com/address/ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN?cluster=devnet)
+[Live Demo](https://rizqfi.vercel.app) • [Video Demo](https://youtu.be/KzM1PP7ZKis) • [Smart Contract](https://explorer.solana.com/address/ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN?cluster=devnet)
 
 </div>
 
@@ -190,7 +190,7 @@ ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/rizqfi.git
+git clone https://github.com/shariqazeem/rizqfi.git
 cd rizqfi
 
 # Install frontend dependencies
@@ -198,7 +198,7 @@ cd rizqfi-frontend
 npm install
 
 # Install smart contract dependencies
-cd ../anchor
+cd ../rizqfi-contracts
 anchor build
 ```
 
@@ -364,11 +364,8 @@ Visit `http://localhost:3000` and connect your wallet!
 
 ### Core Team
 
-**[Your Name]** - Blockchain Developer
-*Background in Solana development, smart contract architecture*
-
-**[Co-founder Name]** - Full-Stack Developer
-*Expert in React/Next.js, UI/UX design*
+**Shariq Shaukat** - Full Stack Developer
+*Background in Python, React, Solana development, smart contract architecture*
 
 ### Why We're Building This
 
@@ -378,7 +375,7 @@ We've seen firsthand how committee scams destroy families. Our parents, relative
 
 ## 📺 Demo Video
 
-[![RizqFi Demo](https://img.shields.io/badge/Watch-Demo%20Video-red?style=for-the-badge&logo=youtube)](https://youtube.com/your-demo)
+[![RizqFi Demo](https://img.shields.io/badge/Watch-Demo%20Video-red?style=for-the-badge&logo=youtube)](https://youtu.be/KzM1PP7ZKis)
 
 **What you'll see**:
 - Real committee creation on Solana
@@ -418,9 +415,9 @@ MIT License - see [LICENSE](LICENSE) for details
 ## 📞 Contact
 
 - **Website**: [rizqfi.vercel.app](https://rizqfi.vercel.app)
-- **Email**: hello@rizqfi.com
-- **Twitter**: [@RizqFi](https://twitter.com/rizqfi)
-- **Telegram**: [RizqFi Community](https://t.me/rizqfi)
+- **Email**: shariqshaukat786@gmail.com
+- **Twitter**: [@RizqFi](https://x.com/shariqshkt)
+- **Telegram**: [RizqFi Community](https://t.me/shariqtrades)
 
 ---
 
@@ -432,6 +429,6 @@ MIT License - see [LICENSE](LICENSE) for details
 
 **Bringing Trust to Community Savings**
 
-[⭐ Star us on GitHub](https://github.com/yourusername/rizqfi) • [🚀 Try it Live](https://rizqfi.vercel.app)
+[⭐ Star us on GitHub](https://github.com/shariqazeem/rizqfi) • [🚀 Try it Live](https://rizqfi.vercel.app)
 
 </div>
