@@ -178,6 +178,65 @@ export default function Home() {
         console.log('ℹ️ No stored committees found');
       }
 
+      // 3. Fetch all member accounts for this user to discover committees
+      console.log('🔍 Scanning blockchain for member accounts...');
+      try {
+        const memberAccounts = await program.account.member.all([
+          {
+            memcmp: {
+              offset: 40, // authority field offset in member account
+              bytes: publicKey!.toBase58(),
+            },
+          },
+        ]);
+
+        console.log(`📋 Found ${memberAccounts.length} member accounts on-chain`);
+
+        for (const memberAccount of memberAccounts) {
+          const committeeKey = memberAccount.account.committee;
+
+          // Skip if we already have this committee
+          if (checkedCommittees.has(committeeKey.toString())) {
+            continue;
+          }
+
+          try {
+            const committeeAccount = await program.account.committee.fetch(committeeKey);
+
+            // Determine role - if creator matches publicKey, they're the creator
+            const isCreator = committeeAccount.authority.toString() === publicKey!.toString();
+
+            allCommittees.push({
+              ...committeeAccount,
+              publicKey: committeeKey,
+              role: isCreator ? 'creator' : 'member',
+              memberAccount: memberAccount.account,
+              memberPDA: memberAccount.publicKey
+            });
+            checkedCommittees.add(committeeKey.toString());
+
+            // Store in localStorage for faster future loads
+            try {
+              const storageKey = `user_${publicKey!.toString()}_committees`;
+              const stored = localStorage.getItem(storageKey);
+              const committees = stored ? JSON.parse(stored) : [];
+              if (!committees.includes(committeeKey.toString())) {
+                committees.push(committeeKey.toString());
+                localStorage.setItem(storageKey, JSON.stringify(committees));
+              }
+            } catch (e) {
+              console.log('⚠️ Could not update localStorage');
+            }
+
+            console.log(`✅ Discovered ${isCreator ? 'created' : 'joined'} committee from blockchain:`, committeeAccount.name);
+          } catch (e) {
+            console.log('⚠️ Committee no longer exists:', committeeKey.toString().slice(0, 8));
+          }
+        }
+      } catch (e: any) {
+        console.log('⚠️ Error scanning for member accounts:', e.message);
+      }
+
       console.log(`📋 Total committees: ${allCommittees.length}`);
       setCommittees(allCommittees);
     } catch (error: any) {
