@@ -57,7 +57,7 @@ export default function Home() {
       wallet.adapter as any,
       { commitment: 'confirmed' }
     );
-    return new Program(idl as any, provider);
+    return new Program(idl as any, provider) as any;
   };
 
   useEffect(() => {
@@ -201,7 +201,7 @@ export default function Home() {
         },
       ]);
 
-      setMembers(memberAccounts.map(m => m.account));
+      setMembers(memberAccounts.map((m: any) => m.account));
     } catch (error) {
       console.error('Error fetching members:', error);
       setMembers([]);
@@ -354,7 +354,7 @@ export default function Home() {
 
       console.log(`Found ${allMembers.length} members`);
 
-      const eligibleMember = allMembers.find(m => !m.account.hasReceivedPayout);
+      const eligibleMember = allMembers.find((m: any) => !m.account.hasReceivedPayout);
 
       if (!eligibleMember) {
         toast.error('No eligible members for payout!');
@@ -668,7 +668,8 @@ export default function Home() {
               [Buffer.from('member'), new PublicKey(inviteCode).toBuffer(), publicKey!.toBuffer()],
               PROGRAM_ID
             );
-            await program?.account.member.fetch(memberPDA);
+            const prog = getProgram();
+            await prog?.account.member.fetch(memberPDA);
             toast.success('Successfully joined the committee!');
             celebrateJoin();
             await fetchCommittees();
