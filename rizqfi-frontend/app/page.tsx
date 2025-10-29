@@ -490,6 +490,16 @@ export default function Home() {
       if (verified) {
         toast.success(`Successfully distributed ${(committee.monthlyContribution * committee.maxMembers / 1_000_000).toFixed(2)} USDC to ${eligibleMember.account.authority.toString().slice(0, 6)}...!`);
         celebratePayout();
+
+        // Check if payout was the last one - if so, committee should be completed
+        // Otherwise, reset member deposits for the next round
+        const updatedCommittee = await program.account.committee.fetch(committee.publicKey);
+
+        // If not completed (still in deposit phase for next round), reset all member deposits
+        if (updatedCommittee.phase && Object.keys(updatedCommittee.phase)[0] === 'deposit') {
+          console.log('🔄 Resetting all member deposits for new round...');
+          await resetAllMemberDeposits({ ...committee, ...updatedCommittee });
+        }
       } else {
         toast('Payout sent. Page will refresh to show updated status.', { icon: '⏳' });
       }
@@ -1599,7 +1609,8 @@ function CommitteeDetailsModal({
     memberData && // User must be a member
     committee.phase &&
     Object.keys(committee.phase)[0] === 'deposit' &&
-    !memberData.hasDepositedCurrentRound;
+    !memberData.hasDepositedCurrentRound &&
+    committee.depositsThisRound < committee.currentMembers; // Ensure not all deposits are in yet
 
   const canDistributePayout =
     isCreator &&
@@ -1824,7 +1835,7 @@ function CommitteeDetailsModal({
           )}
 
           {/* Waiting for Deposits Message */}
-          {memberData && committee.phase && Object.keys(committee.phase)[0] === 'deposit' && !canContribute && (
+          {memberData && committee.phase && Object.keys(committee.phase)[0] === 'deposit' && !canContribute && memberData.hasDepositedCurrentRound && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
               <div className="flex items-start space-x-3">
                 <Clock className="w-5 h-5 text-blue-400 mt-0.5" />
