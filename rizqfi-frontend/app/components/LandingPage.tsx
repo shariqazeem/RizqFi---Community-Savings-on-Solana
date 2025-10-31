@@ -355,7 +355,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                       <h3 className="text-3xl font-bold">Solana Hackathon</h3>
                     </div>
                     <p className="text-gray-400 text-lg leading-relaxed">
-                      Built with passion for the Solana Renaissance Hackathon.
+                      Built with passion for the Solana Cypherpunk Hackathon.
                       Bringing traditional Pakistani committee savings (Committee/Kamaiti) to the blockchain.
                     </p>
                   </div>
@@ -413,9 +413,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               © 2025 RizqFi. Built on Solana.
             </div>
             <div className="flex items-center gap-6 text-gray-400">
-              <a href="#" className="hover:text-purple-400 transition-colors">Docs</a>
-              <a href="#" className="hover:text-purple-400 transition-colors">GitHub</a>
-              <a href="#" className="hover:text-purple-400 transition-colors">Twitter</a>
+              <a href="https://github.com/shariqazeem/rizqfi?tab=readme-ov-file#rizqfi---trustless-community-savings-on-solana" className="hover:text-purple-400 transition-colors">Docs</a>
+              <a href="https://github.com/shariqazeem/rizqfi" className="hover:text-purple-400 transition-colors">GitHub</a>
+              <a href="https://x.com/rizqfi" className="hover:text-purple-400 transition-colors">Twitter</a>
             </div>
           </div>
         </div>
