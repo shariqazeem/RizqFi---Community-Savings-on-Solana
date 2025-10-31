@@ -29,25 +29,25 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       icon: Shield,
       title: "Trust-Verified",
       description: "Blockchain-powered reputation system ensuring community trust",
-      color: "from-emerald-400 to-teal-500"
+      color: "from-emerald-400 to-emerald-600"
     },
     {
       icon: Users,
       title: "Community First",
       description: "Traditional committee savings reimagined for the digital age",
-      color: "from-purple-400 to-pink-500"
+      color: "from-emerald-400 to-emerald-600"
     },
     {
       icon: Lock,
       title: "Secure by Design",
       description: "Smart contracts audited on Solana blockchain",
-      color: "from-blue-400 to-cyan-500"
+      color: "from-emerald-400 to-emerald-600"
     },
     {
       icon: TrendingUp,
       title: "Transparent Growth",
       description: "Track every contribution and payout in real-time",
-      color: "from-orange-400 to-red-500"
+      color: "from-emerald-400 to-emerald-600"
     }
   ];
 
@@ -78,13 +78,20 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white overflow-hidden relative"
+         style={{
+           background: `
+             radial-gradient(circle at 80% 10%, rgba(22,219,101,0.1), transparent 60%),
+             radial-gradient(circle at 20% 90%, rgba(59,130,246,0.08), transparent 60%),
+             linear-gradient(to bottom right, rgb(2,6,23), rgb(15,23,42), rgb(6,78,59))
+           `
+         }}>
       {/* Animated Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f12_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f12_1px,transparent_1px)] bg-[size:64px_64px]" />
 
       {/* Gradient Orbs */}
       <motion.div
-        className="absolute top-0 -left-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
+        className="absolute top-0 -left-40 w-80 h-80 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"
         animate={{
           x: mousePosition.x * 0.02,
           y: mousePosition.y * 0.02,
@@ -92,7 +99,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         transition={{ type: "spring", stiffness: 50 }}
       />
       <motion.div
-        className="absolute top-0 -right-40 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
+        className="absolute top-0 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"
         animate={{
           x: -mousePosition.x * 0.02,
           y: mousePosition.y * 0.02,
@@ -100,7 +107,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         transition={{ type: "spring", stiffness: 50 }}
       />
       <motion.div
-        className="absolute -bottom-40 left-1/2 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
+        className="absolute -bottom-40 left-1/2 w-80 h-80 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"
         animate={{
           x: mousePosition.x * 0.015,
           y: -mousePosition.y * 0.015,
@@ -123,10 +130,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           >
             {/* Badge */}
             <motion.div variants={itemVariants} className="inline-flex mb-8">
-              <div className="px-6 py-2 rounded-full bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 backdrop-blur-xl">
+              <div className="px-6 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-xl">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-medium bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-400">
                     Powered by Solana Blockchain
                   </span>
                 </div>
@@ -136,11 +143,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             {/* Main Heading */}
             <motion.h1
               variants={itemVariants}
-              className="text-6xl md:text-8xl font-bold mb-6 leading-tight"
+              className="text-6xl md:text-8xl font-bold mb-6 leading-tight text-emerald-400"
             >
-              <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent animate-gradient">
-                RizqFi
-              </span>
+              RizqFi
             </motion.h1>
 
             <motion.h2
@@ -149,7 +154,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             >
               Community Savings,
               <br />
-              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="text-emerald-400">
                 Blockchain Trust
               </span>
             </motion.h2>
@@ -201,10 +206,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   transition={{ delay: index * 0.1 }}
                   className="relative group"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all" />
+                  <div className="absolute inset-0 bg-emerald-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all" />
                   <div className="relative bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center">
-                    <stat.icon className="w-8 h-8 mx-auto mb-3 text-purple-400" />
-                    <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+                    <stat.icon className="w-8 h-8 mx-auto mb-3 text-emerald-400" />
+                    <div className="text-3xl font-bold text-emerald-400 mb-2">
                       {stat.value}
                     </div>
                     <div className="text-sm text-gray-400">{stat.label}</div>
@@ -229,7 +234,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-emerald-400">
                 Why Choose RizqFi?
               </h2>
               <p className="text-xl text-gray-400">
@@ -277,7 +282,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-emerald-400">
                 How It Works
               </h2>
               <p className="text-xl text-gray-400">
@@ -314,11 +319,11 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   transition={{ delay: index * 0.2 }}
                   className="relative text-center"
                 >
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-8xl font-bold text-purple-500/10">
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-8xl font-bold text-emerald-500/10">
                     {item.step}
                   </div>
-                  <div className="relative bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:border-purple-500/50 transition-all">
-                    <div className="inline-flex p-4 rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-500 mb-6">
+                  <div className="relative bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:border-emerald-500/50 transition-all">
+                    <div className="inline-flex p-4 rounded-2xl bg-emerald-500 mb-6">
                       <item.icon className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold mb-4">{item.title}</h3>
@@ -341,7 +346,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         >
           <div className="max-w-4xl mx-auto">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-cyan-500/20 rounded-3xl blur-2xl" />
+              <div className="absolute inset-0 bg-emerald-500/20 rounded-3xl blur-2xl" />
               <div className="relative bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-12">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="flex-1">
@@ -387,9 +392,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               transition={{ repeat: Infinity, duration: 5 }}
               className="inline-block mb-6"
             >
-              <Sparkles className="w-16 h-16 text-purple-400" />
+              <Sparkles className="w-16 h-16 text-emerald-400" />
             </motion.div>
-            <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+            <h2 className="text-5xl md:text-6xl font-bold mb-6 text-emerald-400">
               Ready to Start Saving?
             </h2>
             <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
@@ -435,17 +440,17 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           font-size: 1.25rem !important;
           font-weight: 600 !important;
           border-radius: 1rem !important;
-          background: linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153), rgb(6, 182, 212)) !important;
+          background: rgb(16, 185, 129) !important;
           border: none !important;
-          box-shadow: 0 25px 50px -12px rgba(168, 85, 247, 0.5) !important;
+          box-shadow: 0 25px 50px -12px rgba(16, 185, 129, 0.5), 0 0 60px rgba(16, 185, 129, 0.15) !important;
           transition: all 0.3s ease !important;
           color: white !important;
         }
 
         .wallet-button-wrapper button:hover {
           transform: scale(1.05) !important;
-          background: linear-gradient(to right, rgb(147, 51, 234), rgb(219, 39, 119), rgb(8, 145, 178)) !important;
-          box-shadow: 0 25px 50px -12px rgba(168, 85, 247, 0.7) !important;
+          background: rgb(5, 150, 105) !important;
+          box-shadow: 0 25px 50px -12px rgba(16, 185, 129, 0.7), 0 0 80px rgba(16, 185, 129, 0.2) !important;
         }
 
         .wallet-adapter-dropdown {
@@ -461,7 +466,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         }
 
         .wallet-adapter-dropdown-list-item:hover {
-          background: rgba(168, 85, 247, 0.1) !important;
+          background: rgba(16, 185, 129, 0.1) !important;
         }
       `}</style>
     </div>
