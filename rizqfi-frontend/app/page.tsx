@@ -11,6 +11,7 @@ import { celebrateSuccess, celebratePayout, celebrateJoin } from './utils/confet
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { TrustScoreWidget } from './components/TrustScoreWidget';
+import { LandingPage } from './components/LandingPage';
 import idl from './idl.json';
 
 const PROGRAM_ID = new PublicKey('ABKnVQCt2ATkMivkFux7X3zKnozHzXELc2LiUdZM8vCN');
@@ -29,6 +30,7 @@ const PHASE_LABELS: Record<string, { label: string; color: string }> = {
 export default function Home() {
   const { connected, publicKey, wallet } = useWallet();
   const { connection } = useConnection();
+  const [showLanding, setShowLanding] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
@@ -809,6 +811,15 @@ export default function Home() {
     const freqKey = Object.keys(frequency || {})[0] || 'monthly';
     return freqKey.charAt(0).toUpperCase() + freqKey.slice(1);
   };
+
+  const handleGetStarted = () => {
+    setShowLanding(false);
+  };
+
+  // Show landing page if not connected and showLanding is true
+  if (showLanding && !connected) {
+    return <LandingPage onGetStarted={handleGetStarted} />;
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 relative"
