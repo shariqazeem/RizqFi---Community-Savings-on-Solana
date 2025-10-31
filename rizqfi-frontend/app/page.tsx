@@ -30,7 +30,6 @@ const PHASE_LABELS: Record<string, { label: string; color: string }> = {
 export default function Home() {
   const { connected, publicKey, wallet } = useWallet();
   const { connection } = useConnection();
-  const [showLanding, setShowLanding] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
@@ -812,13 +811,9 @@ export default function Home() {
     return freqKey.charAt(0).toUpperCase() + freqKey.slice(1);
   };
 
-  const handleGetStarted = () => {
-    setShowLanding(false);
-  };
-
-  // Show landing page if not connected and showLanding is true
-  if (showLanding && !connected) {
-    return <LandingPage onGetStarted={handleGetStarted} />;
+  // Show landing page if not connected
+  if (!connected) {
+    return <LandingPage />;
   }
 
   return (

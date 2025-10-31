@@ -3,9 +3,10 @@
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { Sparkles, Shield, Users, TrendingUp, Zap, Lock, Award, ArrowRight, ChevronDown, CheckCircle, Globe, DollarSign, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { WalletButton } from './WalletButton';
 
 interface LandingPageProps {
-  onGetStarted: () => void;
+  onGetStarted?: () => void;
 }
 
 export function LandingPage({ onGetStarted }: LandingPageProps) {
@@ -164,14 +165,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
             {/* CTA Button */}
             <motion.div variants={itemVariants}>
-              <button
-                onClick={onGetStarted}
-                className="group relative inline-flex items-center gap-3 px-12 py-6 text-xl font-semibold text-white overflow-hidden rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 hover:scale-105 transition-transform duration-300 shadow-2xl shadow-purple-500/50"
-              >
-                <span className="relative z-10">Launch App</span>
-                <ArrowRight className="relative z-10 w-6 h-6 group-hover:translate-x-2 transition-transform" />
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+              <div className="wallet-button-wrapper">
+                <WalletButton />
+              </div>
             </motion.div>
 
             {/* Scroll Indicator */}
@@ -399,14 +395,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
               Join thousands of users already building wealth together on RizqFi
             </p>
-            <button
-              onClick={onGetStarted}
-              className="group relative inline-flex items-center gap-3 px-12 py-6 text-xl font-semibold text-white overflow-hidden rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 hover:scale-105 transition-transform duration-300 shadow-2xl shadow-purple-500/50"
-            >
-              <span className="relative z-10">Connect Wallet & Start</span>
-              <Zap className="relative z-10 w-6 h-6 group-hover:scale-110 transition-transform" />
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
+            <div className="wallet-button-wrapper">
+              <WalletButton />
+            </div>
           </div>
         </motion.div>
 
@@ -425,7 +416,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes gradient {
           0%, 100% {
             background-position: 0% 50%;
@@ -437,6 +428,40 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         .animate-gradient {
           background-size: 200% 200%;
           animation: gradient 5s ease infinite;
+        }
+
+        .wallet-button-wrapper button {
+          padding: 1.5rem 3rem !important;
+          font-size: 1.25rem !important;
+          font-weight: 600 !important;
+          border-radius: 1rem !important;
+          background: linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153), rgb(6, 182, 212)) !important;
+          border: none !important;
+          box-shadow: 0 25px 50px -12px rgba(168, 85, 247, 0.5) !important;
+          transition: all 0.3s ease !important;
+          color: white !important;
+        }
+
+        .wallet-button-wrapper button:hover {
+          transform: scale(1.05) !important;
+          background: linear-gradient(to right, rgb(147, 51, 234), rgb(219, 39, 119), rgb(8, 145, 178)) !important;
+          box-shadow: 0 25px 50px -12px rgba(168, 85, 247, 0.7) !important;
+        }
+
+        .wallet-adapter-dropdown {
+          background: rgba(15, 23, 42, 0.95) !important;
+          backdrop-filter: blur(20px) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          border-radius: 1rem !important;
+        }
+
+        .wallet-adapter-dropdown-list-item {
+          background: transparent !important;
+          transition: all 0.2s ease !important;
+        }
+
+        .wallet-adapter-dropdown-list-item:hover {
+          background: rgba(168, 85, 247, 0.1) !important;
         }
       `}</style>
     </div>
